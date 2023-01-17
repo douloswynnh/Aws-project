@@ -1,0 +1,58 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Ubuntu'
+Parameters:
+  KeyName:
+    Description: 'd_htet'
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    Default: team-4
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/canonical/ubuntu/server/jammy/stable/current/amd64/hvm/ebs-gp2/ami-id'
+  VPC:
+    Description: 'Just select the one and only default VPC'
+    Type: 'AWS::EC2::VPC::Id'
+  Subnet:
+    Description: 'Just select one of the available subnets'
+    Type: 'AWS::EC2::Subnet::Id'
+  InstanceType:
+    Description: Select one of the possible instance types'
+    Type: String
+    Default: 't2.micro'
+    AllowedValues: ['t2.micro', 't2.small', 't2.medium']
+Resources:
+  SecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'My security group'
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+      - CidrIp: '0.0.0.0/0'
+        FromPort: 22
+        IpProtocol: tcp
+        ToPort: 22
+  VM:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      SecurityGroupIds: [!Ref SecurityGroup]
+      SubnetId: !Ref Subnet
+      UserData: !Base64 
+         'Fn::Join':
+           - ''
+           - - |
+                #!/bin/bash
+                sudo apt-get update && upgrade
+                sudo apt-get install python3-pip -y
+                sudo apt-get install wget
+                sudo apt-get install awscli -y
+                sudo pip3 install boto3
+                sudo pip install pillow
+                sudo apt-get install git-all -y
+              
+Outputs:
+  PublicName:
+    Value: !GetAtt 'VM.PublicDnsName'
+    Description: 'Public name (connect via SSH as user ec2-user)'
